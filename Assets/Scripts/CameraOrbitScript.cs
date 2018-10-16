@@ -1,4 +1,8 @@
-﻿using UnityEngine;
+﻿/*
+ * Zachary Mitchell - 10/12/2018 - 3DMiniGolfwithNoFriends
+ */
+
+using UnityEngine;
 using System.Collections;
 
 public class CameraOrbitScript : MonoBehaviour {
@@ -7,46 +11,47 @@ public class CameraOrbitScript : MonoBehaviour {
 	public float distance = 5.0f;
 	public float xSpeed = 120.0f;
 
+	private Quaternion rotation;
+	private float x = 0.0f;
+	private float y = 0.0f;
 
-	private Rigidbody rigidbody;
 
-	float x = 0.0f;
-	float y = 0.0f;
-
-	// Use this for initialization
-	void Start () 
+	private void Start () 
 	{
+		//	Save starting rotation for x and y (z will always be 0; no fancy movie camera rotations here)
 		Vector3 angles = transform.eulerAngles;
 		x = angles.y;
 		y = angles.x;
+	}
 
-		rigidbody = GetComponent<Rigidbody>();
+	private void LateUpdate () 
+	{
+		SetRotation ();
+		SetPosition ();
+	}
 
-		// Make the rigid body not change rotation
-		if (rigidbody != null)
+
+	private void SetRotation()
+	{
+		if (target)
 		{
-			rigidbody.freezeRotation = true;
+			if (Input.GetKeyDown (KeyCode.RightArrow) || Input.GetKey(KeyCode.RightArrow))
+				x -= xSpeed * distance * Time.deltaTime;
+			if (Input.GetKeyDown (KeyCode.LeftArrow) || Input.GetKey (KeyCode.LeftArrow))
+				x += xSpeed * distance * Time.deltaTime;
+
+			rotation = Quaternion.Euler(y, x, 0);
+
+			transform.rotation = rotation;
 		}
 	}
 
-	void LateUpdate () 
+
+	private void SetPosition()
 	{
-		if (target) 
-		{
-			x += Input.GetAxis("Mouse X") * xSpeed * distance * 0.02f;
+		Vector3 negDistance = new Vector3(0.0f, 0.0f, -distance);
+		Vector3 position = rotation * negDistance + target.position;
 
-			Quaternion rotation = Quaternion.Euler(y, x, 0);
-
-			/*RaycastHit hit;
-			if (Physics.Linecast (target.position, transform.position, out hit)) 
-			{
-				distance -=  hit.distance;
-			}*/
-			Vector3 negDistance = new Vector3(0.0f, 0.0f, -distance);
-			Vector3 position = rotation * negDistance + target.position;
-
-			transform.rotation = rotation;
-			transform.position = position;
-		}
+		transform.position = position;
 	}
 }
