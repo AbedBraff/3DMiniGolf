@@ -10,10 +10,17 @@ public class CameraOrbitScript : MonoBehaviour {
 	public Transform target;
 	public float distance = 5.0f;
 	public float xSpeed = 120.0f;
+	public Light directionalLight;
+
 
 	private Quaternion rotation;
 	private float x = 0.0f;
 	private float y = 0.0f;
+	private PuttingScript puttingScript;
+	private Quaternion lightRotationOffset;
+
+
+	private const string playerTag = "Player";
 
 
 	private void Start () 
@@ -22,11 +29,22 @@ public class CameraOrbitScript : MonoBehaviour {
 		Vector3 angles = transform.eulerAngles;
 		x = angles.y;
 		y = angles.x;
+
+		lightRotationOffset = directionalLight.transform.rotation;
+
+		puttingScript = GameObject.FindGameObjectWithTag (playerTag).GetComponentInChildren<PuttingScript> ();
+		if (!puttingScript)
+		{
+			print ("Error: Cannot find PuttingScript.");
+		}
 	}
 
 	private void LateUpdate () 
 	{
-		SetRotation ();
+		//	Only allow camera control when the ball is moving, or the player isn't currently using the putt meter
+		if (!puttingScript.isActiveAndEnabled || puttingScript.GetCurrentPuttForce() == 0)
+			SetRotation ();
+		
 		SetPosition ();
 	}
 
@@ -35,14 +53,12 @@ public class CameraOrbitScript : MonoBehaviour {
 	{
 		if (target)
 		{
-			if (Input.GetKeyDown (KeyCode.RightArrow) || Input.GetKey(KeyCode.RightArrow))
-				x -= xSpeed * distance * Time.deltaTime;
-			if (Input.GetKeyDown (KeyCode.LeftArrow) || Input.GetKey (KeyCode.LeftArrow))
-				x += xSpeed * distance * Time.deltaTime;
+			x += Input.GetAxis ("Mouse X") * xSpeed * distance * Time.deltaTime;
 
 			rotation = Quaternion.Euler(y, x, 0);
-
 			transform.rotation = rotation;
+
+			directionalLight.transform.rotation = rotation * lightRotationOffset;
 		}
 	}
 

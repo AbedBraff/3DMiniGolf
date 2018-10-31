@@ -10,11 +10,13 @@ using UnityEngine.UI;
 public class PuttingScript : MonoBehaviour {
 
 	public float minPuttForce = 0f;
-	public float maxPuttForce = 30.0f;
+	public float maxPuttForce;
 	public float maxPuttChargeTime = .75f;
 	public Slider puttForceSlider;
 	public Image fillImage;
 	public Camera mainCam;
+	public AudioClip puttClip;
+	public AudioSource audioSource;
 
 
 	private Rigidbody ballRigidBody;
@@ -27,6 +29,7 @@ public class PuttingScript : MonoBehaviour {
 	private bool willPutt;
 	private Vector3 puttVector;
 	private BallMovingScript ballMovingScript;
+	private bool startedPutting;
 
 
 	private void Awake()
@@ -38,21 +41,31 @@ public class PuttingScript : MonoBehaviour {
 		chargeSpeed = (maxPuttForce - minPuttForce) / maxPuttChargeTime;
 		halfPuttForce = maxPuttForce / 2.0f;
 		willPutt = false;
+		startedPutting = false;
+
+		audioSource = GetComponent<AudioSource> ();
 	}
 
 
 	private void OnEnable()
 	{
+		//ballRigidBody.freezeRotation = false;
 		currentPuttForce = minPuttForce;
 		puttForceSlider.value = minPuttForce;
 		willPutt = false;
+		startedPutting = false;
 	}
 
 
 	void Update()
 	{
-		if (willPutt = ShouldPutt ())
-			DeterminePuttVector ();
+		//	Only check if we ShouldPutt if the ball hasn't been set to putt next
+		//	FixedUpdate.  Otherwise we will lose inputs.
+		if (!willPutt)
+		{
+			if (willPutt = ShouldPutt ())
+				DeterminePuttVector ();
+		}
 	}
 
 
@@ -82,8 +95,9 @@ public class PuttingScript : MonoBehaviour {
 		{
 			//	pressed space first time
 			currentPuttForce = minPuttForce;
+			startedPutting = true;
 		}
-		else if (Input.GetKey (KeyCode.Space))
+		else if (Input.GetKey (KeyCode.Space) && startedPutting)
 		{
 			//	holding putt, not fired
 			currentPuttForce += chargeSpeed * Time.deltaTime;
@@ -124,6 +138,10 @@ public class PuttingScript : MonoBehaviour {
 
 	private void Putt()
 	{
+		audioSource.clip = puttClip;
+		audioSource.volume = currentPuttForce / (maxPuttForce - minPuttForce);
+		audioSource.Play ();
+
 		ballRigidBody.AddForce (puttVector, ForceMode.Impulse);
 	}
 
@@ -132,5 +150,17 @@ public class PuttingScript : MonoBehaviour {
 	{
 		ballMovingScript.enabled = true;
 		this.enabled = false;
+	}
+
+
+	public float GetMaxPuttForce()
+	{
+		return maxPuttForce;
+	}
+
+
+	public float GetCurrentPuttForce()
+	{
+		return currentPuttForce;
 	}
 }
