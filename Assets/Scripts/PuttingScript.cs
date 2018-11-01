@@ -9,61 +9,63 @@ using UnityEngine.UI;
 
 public class PuttingScript : MonoBehaviour {
 
-	public float minPuttForce = 0f;
-	public float maxPuttForce;
-	public float maxPuttChargeTime = .75f;
-	public Slider puttForceSlider;
-	public Image fillImage;
-	public Camera mainCam;
-	public AudioClip puttClip;
-	public AudioSource audioSource;
+
+	public float m_MaxPuttChargeTime = 2f;
+	public Slider m_PuttForceSlider;
+	public Image m_FillImage;
+	public AudioClip m_PuttClip;
+	public AudioSource m_PuttAudioSource;
+
+	[SerializeField]private float m_MaxPuttForce = 0.5f;
+	private Rigidbody m_BallRigidBody;
+	private float m_CurrentPuttForce;
+	private float m_ChargeSpeed;
+	private Color m_MinPuttForceColor = Color.yellow;
+	private Color m_MidPuttForceColor = Color.green;
+	private Color m_MaxPuttForceColor = Color.red;
+	private float m_HalfPuttForce;
+	private bool m_WillPutt;
+	private Vector3 m_PuttVector;
+	private BallMovingScript m_BallMovingScript;
+	private bool m_StartedPutting;
 
 
-	private Rigidbody ballRigidBody;
-	private float currentPuttForce;
-	private float chargeSpeed;
-	private Color minPuttForceColor = Color.yellow;
-	private Color midPuttForceColor = Color.green;
-	private Color maxPuttForceColor = Color.red;
-	private float halfPuttForce;
-	private bool willPutt;
-	private Vector3 puttVector;
-	private BallMovingScript ballMovingScript;
-	private bool startedPutting;
+	private const float M_MINPUTTFORCE = 0f;
 
 
 	private void Awake()
 	{
-		ballRigidBody = GetComponent<Rigidbody> ();
-		ballMovingScript = GetComponent<BallMovingScript> ();
+		m_BallRigidBody = GetComponent<Rigidbody> ();
+		m_BallMovingScript = GetComponent<BallMovingScript> ();
 
-		puttForceSlider.maxValue = maxPuttForce;
-		chargeSpeed = (maxPuttForce - minPuttForce) / maxPuttChargeTime;
-		halfPuttForce = maxPuttForce / 2.0f;
-		willPutt = false;
-		startedPutting = false;
+		m_PuttForceSlider.maxValue = m_MaxPuttForce;
+		m_WillPutt = false;
+		m_StartedPutting = false;
 
-		audioSource = GetComponent<AudioSource> ();
+		m_ChargeSpeed = (m_MaxPuttForce - M_MINPUTTFORCE) / m_MaxPuttChargeTime;
+		m_HalfPuttForce = m_MaxPuttForce / 2.0f;
 	}
 
 
 	private void OnEnable()
 	{
-		//ballRigidBody.freezeRotation = false;
-		currentPuttForce = minPuttForce;
-		puttForceSlider.value = minPuttForce;
-		willPutt = false;
-		startedPutting = false;
+		m_CurrentPuttForce = M_MINPUTTFORCE;
+		m_PuttForceSlider.value = M_MINPUTTFORCE;
+		m_WillPutt = false;
+		m_StartedPutting = false;
 	}
 
 
 	void Update()
 	{
-		//	Only check if we ShouldPutt if the ball hasn't been set to putt next
-		//	FixedUpdate.  Otherwise we will lose inputs.
-		if (!willPutt)
+		/*	
+		 * Only check if we ShouldPutt if the ball hasn't been set to putt next
+		 *	FixedUpdate.  Otherwise we will lose inputs.
+		 *	If we will be putting, determine the putt vector for the next FixedUpdate
+		*/
+		if (!m_WillPutt)
 		{
-			if (willPutt = ShouldPutt ())
+			if (m_WillPutt = ShouldPutt ())
 				DeterminePuttVector ();
 		}
 	}
@@ -71,7 +73,8 @@ public class PuttingScript : MonoBehaviour {
 
 	void FixedUpdate()
 	{
-		if (willPutt)
+		//	Putt and transfer control to the BallMovingScript
+		if (m_WillPutt)
 		{
 			Putt ();
 			TransferControl ();
@@ -82,39 +85,40 @@ public class PuttingScript : MonoBehaviour {
 	//	Determine if the ball should be struck based purely on the current level of the hit meter
 	private bool ShouldPutt()
 	{
-		puttForceSlider.value = minPuttForce;
-		fillImage.color = minPuttForceColor;
+		m_PuttForceSlider.value = M_MINPUTTFORCE;
+		m_FillImage.color = m_MinPuttForceColor;
 
-		if (currentPuttForce >= maxPuttForce)
+		if (m_CurrentPuttForce >= m_MaxPuttForce)
 		{
 			//	max charge, not yet putted
-			currentPuttForce = maxPuttForce;
+			m_CurrentPuttForce = m_MaxPuttForce;
 			return true;
 		}
 		else if (Input.GetKeyDown (KeyCode.Space))
 		{
 			//	pressed space first time
-			currentPuttForce = minPuttForce;
-			startedPutting = true;
+			m_CurrentPuttForce = M_MINPUTTFORCE;
+			m_StartedPutting = true;
 		}
-		else if (Input.GetKey (KeyCode.Space) && startedPutting)
+		else if (Input.GetKey (KeyCode.Space) && m_StartedPutting)
 		{
 			//	holding putt, not fired
-			currentPuttForce += chargeSpeed * Time.deltaTime;
+			m_CurrentPuttForce += m_ChargeSpeed * Time.deltaTime;
 
 
 			//	Update slider value and color according to currentPuttForce
-			puttForceSlider.value = currentPuttForce;
+			m_PuttForceSlider.value = m_CurrentPuttForce;
 
-			if (currentPuttForce < halfPuttForce)
+			if (m_CurrentPuttForce < m_HalfPuttForce)
 			{
 				// putt force is from min to half
-				fillImage.color = Color.Lerp(minPuttForceColor, midPuttForceColor, (currentPuttForce / halfPuttForce));
+				m_FillImage.color = Color.Lerp(m_MinPuttForceColor, m_MidPuttForceColor, (m_CurrentPuttForce / m_HalfPuttForce));
 			}
-			else if (currentPuttForce > halfPuttForce)
+			else if (m_CurrentPuttForce > m_HalfPuttForce)
 			{
 				//	putt force is from half to max
-				fillImage.color = Color.Lerp(midPuttForceColor, maxPuttForceColor, ((currentPuttForce - halfPuttForce) / halfPuttForce));
+				m_FillImage.color = Color.Lerp(m_MidPuttForceColor, m_MaxPuttForceColor, ((m_CurrentPuttForce - m_HalfPuttForce)
+									/ m_HalfPuttForce));
 			}
 		}
 		else if (Input.GetKeyUp (KeyCode.Space))
@@ -127,40 +131,46 @@ public class PuttingScript : MonoBehaviour {
 	}
 
 
+	//	Calculate the force vector for the putt
 	private void DeterminePuttVector()
 	{
-		puttVector = (mainCam.transform.forward);
-		puttVector.y = 0f;
-		puttVector.Normalize ();
-		puttVector *= currentPuttForce;
+		m_PuttVector = m_BallRigidBody.transform.forward * m_CurrentPuttForce;
 	}
 
 
+	//	Putt the ball
 	private void Putt()
 	{
-		audioSource.clip = puttClip;
-		audioSource.volume = currentPuttForce / (maxPuttForce - minPuttForce);
-		audioSource.Play ();
-
-		ballRigidBody.AddForce (puttVector, ForceMode.Impulse);
+		PlayPuttAudio ();
+		m_BallRigidBody.AddForce (m_PuttVector, ForceMode.Impulse);
 	}
 
 
+	//	Play audio for hitting the ball
+	private void PlayPuttAudio()
+	{
+		m_PuttAudioSource.clip = m_PuttClip;
+		m_PuttAudioSource.volume = m_CurrentPuttForce / (m_MaxPuttForce - M_MINPUTTFORCE);
+		m_PuttAudioSource.Play ();
+	}
+
+
+	//	Transfer control to the BallMovingScript
 	public void TransferControl()
 	{
-		ballMovingScript.enabled = true;
+		m_BallMovingScript.enabled = true;
 		this.enabled = false;
 	}
 
 
 	public float GetMaxPuttForce()
 	{
-		return maxPuttForce;
+		return m_MaxPuttForce;
 	}
 
 
 	public float GetCurrentPuttForce()
 	{
-		return currentPuttForce;
+		return m_CurrentPuttForce;
 	}
 }

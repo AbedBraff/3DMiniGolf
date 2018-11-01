@@ -1,4 +1,0 @@
-<ListOfTask>
-  <Task file="" description="Clean up audio code" />
-  <Task file="" description="Use (1-e^(-x)) for all audio not based directly on puttforce" />
-</ListOfTask>
