@@ -53,7 +53,18 @@ public class CameraOrbitScript : MonoBehaviour {
 	{
 		if (m_Target)
 		{
-			m_CamAngleX += Input.GetAxis ("Mouse X") * m_XSpeed * m_Distance * Time.deltaTime;
+			if (Input.GetAxis ("Mouse X") != 0)
+			{
+				m_CamAngleX += Input.GetAxis ("Mouse X") * m_XSpeed * m_Distance * Time.deltaTime;
+			}
+			else
+			{
+				if(Input.GetKey(KeyCode.LeftArrow))
+					m_CamAngleX += m_XSpeed * m_Distance * Time.deltaTime;
+				else if(Input.GetKey(KeyCode.RightArrow))
+					m_CamAngleX -= m_XSpeed * m_Distance * Time.deltaTime;
+				
+			}
 
 			m_Rotation = Quaternion.Euler(m_CamAngleY, m_CamAngleX, 0);
 			transform.rotation = m_Rotation;

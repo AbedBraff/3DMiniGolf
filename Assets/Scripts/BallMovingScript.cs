@@ -29,7 +29,7 @@ public class BallMovingScript : MonoBehaviour {
 
 	private const string M_WALLTAG = "Wall";
 	private const string M_GROUNDTAG = "Ground";
-	private const float M_SOUNDSMOOTHING = -0.25f;
+	private const float M_SOUNDSMOOTHING = -0.5f;
 	private const float M_GRASSEMISSION = 40f;
 
 
@@ -80,8 +80,17 @@ public class BallMovingScript : MonoBehaviour {
 		{
 			PlayWallHitAudio ();
 		}
-		//	Play audio for ball bouncing on grass
-		else if (collision.gameObject.CompareTag (M_GROUNDTAG))
+		/* Check to see if ball is bouncing off the grass/ground
+		 * Checks are:
+		 * 1) Continue if the object collided with is the ground AND
+		 * 2) Continue if the ball is not moving parallel to FORWARD TRANSFORM of the ground AND
+		 * 3) Continue if the ball is not moving in a plane parallel to the ground plane AND
+		 * 4) Continue if the ball is not moving in a plane inverse to and parallel to the ground plane
+		 */
+		else if (collision.gameObject.CompareTag (M_GROUNDTAG) &&
+			Vector3.Cross(collision.transform.forward, m_BallRigidBody.velocity).normalized != Vector3.zero &&
+			Vector3.Cross(collision.transform.forward, m_BallRigidBody.velocity).normalized != collision.transform.up &&
+			Vector3.Cross(collision.transform.forward, m_BallRigidBody.velocity).normalized != (collision.transform.up * -1))
 		{
 			PlayGrassHitAudio ();
 		}

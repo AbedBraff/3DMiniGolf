@@ -329,7 +329,6 @@ MonoBehaviour:
   m_MaxPuttChargeTime: 2
   m_PuttForceSlider: {fileID: 2008804461}
   m_FillImage: {fileID: 116466583}
-  m_MainCam: {fileID: 789719118}
   m_PuttClip: {fileID: 8300000, guid: 9a7f8377e9d5fa64e8cfd3ab8b509aaf, type: 3}
   m_PuttAudioSource: {fileID: 152627130}
   m_MaxPuttForce: 0.5
@@ -1829,7 +1828,7 @@ ParticleSystem:
   moveWithTransform: 0
   moveWithCustomTransform: {fileID: 0}
   scalingMode: 1
-  randomSeed: 882911136
+  randomSeed: 760882946
   InitialModule:
     serializedVersion: 3
     enabled: 1
