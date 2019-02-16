@@ -25,12 +25,16 @@ public class BallMovingScript : MonoBehaviour {
 	private float m_OriginalPitch;
 	private Quaternion m_OriginalParticleRotation;
 	private float m_AudioVolume;
+    private Vector3 m_PreviousFrameVelocity;
+    private bool m_IsInAir;
+    private float m_TimeInAir;
 
 
 	private const string M_WALLTAG = "Wall";
 	private const string M_GROUNDTAG = "Ground";
 	private const float M_SOUNDSMOOTHING = -0.5f;
 	private const float M_GRASSEMISSION = 40f;
+    private const float M_AIRTIMECUTOFFVALUE = .15f;
 
 
 	private void Awake()
@@ -42,23 +46,31 @@ public class BallMovingScript : MonoBehaviour {
 		m_OriginalParticleRotation = m_GrassParticles.transform.rotation;
 
 		m_GrassParticles.gameObject.SetActive (false);
+        m_IsInAir = false;
 	}
 
 
 	private void Update()
 	{
-		//	Update any volume that is based on ball velocity per frame; can be changed to once per x frames if needed
-		m_AudioVolume = (1f - (Mathf.Exp(M_SOUNDSMOOTHING * m_BallRigidBody.velocity.magnitude)));
+        //  Update time in the air if needed
+        if (m_IsInAir)
+            m_TimeInAir += Time.deltaTime;
+
+        //	Update any volume that is based on ball velocity per frame
+        m_AudioVolume = (1f - (Mathf.Exp(M_SOUNDSMOOTHING * m_PreviousFrameVelocity.magnitude)));
 
 		//	Update our particle effects for grass behind the ball as it moves
 		UpdateGrassParticles ();
+
+        //  Update previous frame velocity value for next frame
+        m_PreviousFrameVelocity = m_BallRigidBody.velocity;
 	}
 
 
 		private void FixedUpdate()
 	{
-		//	Stop ball and transfer control if the velocity < m_StoppingSpeed
-		if (m_BallRigidBody.velocity.magnitude <= m_StoppingSpeed)
+        //	Stop ball and transfer control if the velocity < m_StoppingSpeed
+        if (m_BallRigidBody.velocity.magnitude <= m_StoppingSpeed)
 		{
 			StopBall ();
 			TransferControl ();
@@ -80,20 +92,19 @@ public class BallMovingScript : MonoBehaviour {
 		{
 			PlayWallHitAudio ();
 		}
-		/* Check to see if ball is bouncing off the grass/ground
-		 * Checks are:
+        /* Checks to see if ball is bouncing off the grass/ground:
 		 * 1) Continue if the object collided with is the ground AND
-		 * 2) Continue if the ball is not moving parallel to FORWARD TRANSFORM of the ground AND
-		 * 3) Continue if the ball is not moving in a plane parallel to the ground plane AND
-		 * 4) Continue if the ball is not moving in a plane inverse to and parallel to the ground plane
+		 * 2) if the dot product of the ball's velocity and the the down vector (0, -1, 0) is greater than 0 meaning that the ball's velocity has some level of downward component
 		 */
-		else if (collision.gameObject.CompareTag (M_GROUNDTAG) &&
-			Vector3.Cross(collision.transform.forward, m_BallRigidBody.velocity).normalized != Vector3.zero &&
-			Vector3.Cross(collision.transform.forward, m_BallRigidBody.velocity).normalized != collision.transform.up &&
-			Vector3.Cross(collision.transform.forward, m_BallRigidBody.velocity).normalized != (collision.transform.up * -1))
-		{
-			PlayGrassHitAudio ();
-		}
+        else if (collision.gameObject.CompareTag(M_GROUNDTAG) && 
+            Vector3.Dot((collision.transform.up * -1), m_PreviousFrameVelocity) > 0f)
+        {
+            //  Only play if the ball has been in the air over the value of the cutoff; restricts audio from playing when going over bumps between tiles
+            if (m_TimeInAir > M_AIRTIMECUTOFFVALUE)
+                PlayGrassHitAudio();
+        }
+
+        m_IsInAir = false;
 	}
 
 
@@ -101,14 +112,25 @@ public class BallMovingScript : MonoBehaviour {
 	{
 		//	Play audio for ball rolling on grass if it remains in contact with grass
 		if (collision.gameObject.CompareTag (M_GROUNDTAG))
-		{
 			PlayBallRollingAudio ();
-		}
+
+        m_IsInAir = false;
 	}
 
 
-	//	Hitting side walls audio
-	private void PlayWallHitAudio()
+    private void OnCollisionExit(Collision collision)
+    {
+        //  Check if ball is leaving the ground
+        if (collision.gameObject.CompareTag(M_GROUNDTAG) == true)
+        {
+            m_IsInAir = true;
+            m_TimeInAir = 0f;
+        }
+    }
+
+
+    //	Hitting side walls audio
+    private void PlayWallHitAudio()
 	{
 		m_SecondaryAudioSource.clip = m_WallBounceClip;
 		m_SecondaryAudioSource.volume = m_AudioVolume;
