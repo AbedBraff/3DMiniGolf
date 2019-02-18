@@ -18,6 +18,7 @@ public class BallMovingScript : MonoBehaviour {
 	public float m_PitchRange = .2f;
 	public ParticleSystem m_GrassParticles;
 	public Vector3 m_GrassParticlesOffset;
+    public float m_AirTimeToResetBall;
 
 
 	private PuttingScript m_PuttingScript;
@@ -28,6 +29,7 @@ public class BallMovingScript : MonoBehaviour {
     private Vector3 m_PreviousFrameVelocity;
     private bool m_IsInAir;
     private float m_TimeInAir;
+    private Vector3 m_BallPreviousPos;
 
 
 	private const string M_WALLTAG = "Wall";
@@ -35,6 +37,9 @@ public class BallMovingScript : MonoBehaviour {
 	private const float M_SOUNDSMOOTHING = -0.5f;
 	private const float M_GRASSEMISSION = 40f;
     private const float M_AIRTIMECUTOFFVALUE = .15f;
+
+
+    private static Stack<Collider> m_CurrentCollidersStack = new Stack<Collider>();
 
 
 	private void Awake()
@@ -52,27 +57,54 @@ public class BallMovingScript : MonoBehaviour {
 
 	private void Update()
 	{
-        //  Update time in the air if needed
-        if (m_IsInAir)
-            m_TimeInAir += Time.deltaTime;
-
-        //	Update any volume that is based on ball velocity per frame
-        m_AudioVolume = (1f - (Mathf.Exp(M_SOUNDSMOOTHING * m_PreviousFrameVelocity.magnitude)));
-
-		//	Update our particle effects for grass behind the ball as it moves
-		UpdateGrassParticles ();
-
-        //  Update previous frame velocity value for next frame
-        m_PreviousFrameVelocity = m_BallRigidBody.velocity;
-	}
+        //  When the ball isn't in the air, or is in the air but under the reset time, perform standard updates
+        if(!m_IsInAir || (m_IsInAir && (m_TimeInAir <= m_AirTimeToResetBall)))
+        {
+            if(m_IsInAir)
+            {
+                m_TimeInAir += Time.deltaTime;
+            }
 
 
-		private void FixedUpdate()
+            //	Update any volume that is based on ball velocity per frame
+            m_AudioVolume = (1f - (Mathf.Exp(M_SOUNDSMOOTHING * m_PreviousFrameVelocity.magnitude)));
+
+            //	Update our particle effects for grass behind the ball as it moves
+            UpdateGrassParticles();
+
+            //  Update previous frame velocity value for next frame
+            m_PreviousFrameVelocity = m_BallRigidBody.velocity;
+        }
+        //  The ball has been in the air over the time limit; reset to previous position
+        else if (m_TimeInAir > m_AirTimeToResetBall)
+        {
+            StopBall();
+            ResetBallToPreviousPos();
+        }
+    }
+
+
+	private void FixedUpdate()
 	{
         //	Stop ball and transfer control if the velocity < m_StoppingSpeed
         if (m_BallRigidBody.velocity.magnitude <= m_StoppingSpeed)
 		{
 			StopBall ();
+
+            bool isTouchingGround = false;
+
+            for(int i = 0; i < m_CurrentCollidersStack.GetNumObjects(); ++i)
+            {
+                if(m_CurrentCollidersStack.GetObjectAt(i).CompareTag(M_GROUNDTAG))
+                {
+                    isTouchingGround = true;
+                    break;
+                }
+            }
+
+            if (!isTouchingGround)
+                ResetBallToPreviousPos();
+
 			TransferControl ();
 		}
 	}
@@ -80,7 +112,10 @@ public class BallMovingScript : MonoBehaviour {
 
 	private void OnEnable()
 	{
-		m_GrassParticles.gameObject.SetActive (true);
+        m_TimeInAir = 0;
+        m_BallPreviousPos = gameObject.transform.position;
+
+        m_GrassParticles.gameObject.SetActive (true);
 		m_GrassParticles.Play ();
 	}
 		
@@ -105,6 +140,9 @@ public class BallMovingScript : MonoBehaviour {
         }
 
         m_IsInAir = false;
+
+        //  Add the collider to the list of current colliders the ball is touching
+        m_CurrentCollidersStack.AddAt(collision.collider, m_CurrentCollidersStack.GetNumObjects());
 	}
 
 
@@ -120,8 +158,18 @@ public class BallMovingScript : MonoBehaviour {
 
     private void OnCollisionExit(Collision collision)
     {
-        //  Check if ball is leaving the ground
-        if (collision.gameObject.CompareTag(M_GROUNDTAG) == true)
+        //  Remove the collider from the list of current colliders the ball is touching
+        for(int i = 0; i < m_CurrentCollidersStack.GetNumObjects(); ++i)
+        {
+            if(m_CurrentCollidersStack.GetObjectAt(i) == collision.collider)
+            {
+                m_CurrentCollidersStack.RemoveAt(i);
+                break;
+            }
+        }
+
+        //  Check if there are no current colliders (the ball is in the air) and if true, start the air timer
+        if(m_CurrentCollidersStack.IsEmpty())
         {
             m_IsInAir = true;
             m_TimeInAir = 0f;
@@ -156,9 +204,17 @@ public class BallMovingScript : MonoBehaviour {
 	}
 
 
+    private void ResetBallToPreviousPos()
+    {
+        m_PreviousFrameVelocity = Vector3.zero;
+        gameObject.transform.position = m_BallPreviousPos;
+        TransferControl();
+    }
+
+
 	private void StopBall()
 	{
-		//	Set velocity to zero and freeze/unfreeze rotation so rotational inertia doesn't continue to move the ball
+        //	Set velocity to zero and freeze/unfreeze rotation so rotational inertia doesn't continue to move the ball
 		m_BallRigidBody.velocity = Vector3.zero;
 		m_BallRigidBody.freezeRotation = true;
 		m_BallRigidBody.freezeRotation = false;
