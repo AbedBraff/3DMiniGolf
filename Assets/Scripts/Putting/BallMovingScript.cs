@@ -6,6 +6,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class BallMovingScript : MonoBehaviour {
 
@@ -19,6 +20,8 @@ public class BallMovingScript : MonoBehaviour {
 	public ParticleSystem m_GrassParticles;
 	public Vector3 m_GrassParticlesOffset;
     public float m_AirTimeToResetBall;
+    public float m_OOBResetTime;
+    public Animator m_OOBTextAnimator;
 
 
 	private PuttingScript m_PuttingScript;
@@ -30,10 +33,13 @@ public class BallMovingScript : MonoBehaviour {
     private bool m_IsInAir;
     private float m_TimeInAir;
     private Vector3 m_BallPreviousPos;
+    private float m_OOBResetTimer = 0f;
+    private bool m_HasOOBAnimStarted;
 
 
 	private const string M_WALLTAG = "Wall";
 	private const string M_GROUNDTAG = "Ground";
+    private const string M_OOBTEXTTRIGGER = "IsOutOfBounds";
 	private const float M_SOUNDSMOOTHING = -0.5f;
 	private const float M_GRASSEMISSION = 40f;
     private const float M_AIRTIMECUTOFFVALUE = .15f;
@@ -52,6 +58,7 @@ public class BallMovingScript : MonoBehaviour {
 
 		m_GrassParticles.gameObject.SetActive (false);
         m_IsInAir = false;
+        m_HasOOBAnimStarted = false;
 	}
 
 
@@ -78,8 +85,23 @@ public class BallMovingScript : MonoBehaviour {
         //  The ball has been in the air over the time limit; reset to previous position
         else if (m_TimeInAir > m_AirTimeToResetBall)
         {
-            StopBall();
-            ResetBallToPreviousPos();
+            if(!m_HasOOBAnimStarted)
+            {
+                m_OOBTextAnimator.SetTrigger(M_OOBTEXTTRIGGER);
+                m_HasOOBAnimStarted = true;
+            }
+        }
+
+
+        if(m_HasOOBAnimStarted)
+        {
+            m_OOBResetTimer += Time.deltaTime;
+
+            if (m_OOBResetTimer >= m_OOBResetTime)
+            {
+                StopBall();
+                ResetBallToPreviousPos();
+            }
         }
     }
 
@@ -91,8 +113,8 @@ public class BallMovingScript : MonoBehaviour {
 		{
 			StopBall ();
 
+            //  Search through the current collider stack and see if the ball is touching part of the valid current hole of the course
             bool isTouchingGround = false;
-
             for(int i = 0; i < m_CurrentCollidersStack.GetNumObjects(); ++i)
             {
                 if(m_CurrentCollidersStack.GetObjectAt(i).CompareTag(M_GROUNDTAG))
@@ -101,19 +123,29 @@ public class BallMovingScript : MonoBehaviour {
                     break;
                 }
             }
-
+            
             if (!isTouchingGround)
-                ResetBallToPreviousPos();
-
-			TransferControl ();
+            {
+                //  Check if out of bounds animation has been triggered yet this putt and play if it has not been
+                if (!m_HasOOBAnimStarted)
+                {
+                    m_OOBTextAnimator.SetTrigger(M_OOBTEXTTRIGGER);
+                    m_HasOOBAnimStarted = true;
+                }
+            }
+            //  If the ball is touching a valid part of the current hole, we can go ahead and start the next putt
+            else
+			    TransferControl ();
 		}
 	}
 
 
 	private void OnEnable()
 	{
+        m_OOBResetTimer = 0f;
         m_TimeInAir = 0;
         m_BallPreviousPos = gameObject.transform.position;
+        m_HasOOBAnimStarted = false;
 
         m_GrassParticles.gameObject.SetActive (true);
 		m_GrassParticles.Play ();
@@ -226,7 +258,8 @@ public class BallMovingScript : MonoBehaviour {
 	{
 		m_GrassParticles.transform.position = m_BallRigidBody.transform.position + m_GrassParticlesOffset;
 
-		m_GrassParticles.transform.rotation = Quaternion.LookRotation(m_BallRigidBody.velocity, Vector3.up)
+        if(m_BallRigidBody.velocity != Vector3.zero)
+		    m_GrassParticles.transform.rotation = Quaternion.LookRotation(m_BallRigidBody.velocity, Vector3.up)
 												* m_OriginalParticleRotation;
 
 		//	Emission rate over time set to sqr rt formula with (m_stoppingSpeed, 0) as initial point
