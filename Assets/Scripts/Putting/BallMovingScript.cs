@@ -1,38 +1,42 @@
 ﻿/*
- * Zachary Mitchell - 10/15/18 - 3dMinigolfwithNoFriends
+ * Zachary Mitchell
+ * 3DGolfwithNoFriends
  */
 
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class BallMovingScript : MonoBehaviour {
 
-
-	public float m_StoppingSpeed = .05f;
-	public AudioClip m_WallBounceClip;
-	public AudioClip m_GrassBounceClip;
-	public AudioSource m_MainAudioSource;
-	public float m_PitchRange = .2f;
-	public ParticleSystem m_GrassParticles;
-	public Vector3 m_GrassParticlesOffset;
+public class BallMovingScript : MonoBehaviour
+{
+    public AudioClip m_WallBounceClip;
+    public AudioClip m_GrassBounceClip;
+    public Vector3 m_GrassParticlesOffset;
+    public float m_StoppingSpeed = .05f;
+	public float m_PitchRange;
     public float m_AirTimeToResetBall;
-    public float m_OOBResetTime;
-    public Animator m_OOBTextAnimator;
+    public float m_OOBAnimationDuration;
+    public float m_SoundSmoothing = -0.5f;
+    public float m_GrassParticleEmissionRate = 50f;
+    public float m_MinAirTimeToPlayGroundCollisionAudio = .15f;
 
 
+    private Animator m_OOBTextAnimator;
+    private AudioSource m_MainAudioSource;
 	private PuttingScript m_PuttingScript;
+    private PlayerManager m_PlayerManagerScript;
 	private Rigidbody m_BallRigidBody;
-	private float m_OriginalPitch;
-	private Quaternion m_OriginalParticleRotation;
-	private float m_AudioVolume;
-    private Vector3 m_PreviousFrameVelocity;
-    private bool m_IsInAir;
-    private float m_TimeInAir;
+    private Quaternion m_OriginalParticleRotation;
     private Vector3 m_BallPreviousPos;
-    private float m_OOBResetTimer = 0f;
+    private Vector3 m_PreviousFrameVelocity;
+    private ParticleSystem m_GrassParticles;
+    private float m_OriginalPitch;
+    private float m_TimeInAir;
+    private float m_OOBResetTimer;
     private bool m_HasOOBAnimStarted;
     private bool m_IsInHole;
 
@@ -41,42 +45,69 @@ public class BallMovingScript : MonoBehaviour {
 	private const string M_GROUNDTAG = "Ground";
     private const string M_HOLETAG = "Hole";
     private const string M_OOBTEXTTRIGGER = "IsOutOfBounds";
-	private const float M_SOUNDSMOOTHING = -0.5f;
-	private const float M_GRASSEMISSION = 50f;
-    private const float M_AIRTIMECUTOFFVALUE = .15f;
+    private const string M_GRASSPARTICLESNAME = "GrassParticles";
+    private const string M_COURSEHOLEPREFIX = "CourseHole";
+    private ColliderStack m_CurrentCollidersStack;
 
 
-    //private Stack<Collider> m_CurrentCollidersStack = new Stack<Collider>();
-    private ColliderStack m_CurrentCollidersStack = new ColliderStack();
-
-
-	private void Awake()
+	public void Setup()
 	{
-		m_PuttingScript = GetComponent<PuttingScript> ();
-		m_BallRigidBody = GetComponent<Rigidbody> ();
+        //  Find and cache needed scripts and components
+        try
+        {
+            m_MainAudioSource = GetComponent<AudioSource>();
+            m_PuttingScript = GetComponent<PuttingScript>();
+            m_BallRigidBody = GetComponent<Rigidbody>();
+            m_PlayerManagerScript = this.transform.parent.gameObject.GetComponent<PlayerManager>();
+            m_GrassParticles = GameObject.Find(M_GRASSPARTICLESNAME).GetComponent<ParticleSystem>();
+            m_OOBTextAnimator = m_PlayerManagerScript.m_CanvasGameObject.GetComponentInChildren<Animator>(true);
+        }
+        catch (Exception e)
+        {
+            print("Error: " + e.ToString());
+        }
 
+
+        //  Create an instance of our colliderstack
+        m_CurrentCollidersStack = new ColliderStack();
+
+        //  Set vars to starting values
+        ResetVariables();
 		m_OriginalPitch = m_MainAudioSource.pitch;
 		m_OriginalParticleRotation = m_GrassParticles.transform.rotation;
-
-		m_GrassParticles.gameObject.SetActive (false);
-        m_IsInAir = false;
-        m_HasOOBAnimStarted = false;
+		
+        this.enabled = false;
 	}
 
 
-	private void Update()
+    //  Called each time the ball is putt again - resets all needed variables to starting values
+    private void OnEnable()
+    {
+        m_BallPreviousPos = gameObject.transform.position;  //  Only called with OnEnable as during setup it has no previous position
+        ResetVariables();
+    }
+
+
+    //  Reset vars to starting values
+    private void ResetVariables()
+    {
+        m_GrassParticles.gameObject.SetActive(false);
+        m_TimeInAir = 0.0f;
+        m_HasOOBAnimStarted = false;
+        m_OOBResetTimer = 0.0f;
+        m_IsInHole = false;
+        m_PlayerManagerScript.SetIsInHole(false);
+    }
+
+
+    private void Update()
 	{
-        //  When the ball isn't in the air, or is in the air but under the reset time, perform standard updates
-        if(!m_IsInAir || (m_IsInAir && (m_TimeInAir <= m_AirTimeToResetBall)))
+        //  Perform standard updates either when the ball is on the ground, or is in the air but under the reset time
+        if(!m_CurrentCollidersStack.IsEmpty() || (m_CurrentCollidersStack.IsEmpty() && (m_TimeInAir <= m_AirTimeToResetBall)))
         {
-            if(m_IsInAir)
-            {
+            if(m_CurrentCollidersStack.IsEmpty())
                 m_TimeInAir += Time.deltaTime;
-            }
 
-
-            //	Update any volume that is based on ball velocity per frame
-            m_AudioVolume = (1f - (Mathf.Exp(M_SOUNDSMOOTHING * m_PreviousFrameVelocity.magnitude)));
 
             //	Update our particle effects for grass behind the ball as it moves
             UpdateGrassParticles();
@@ -84,7 +115,10 @@ public class BallMovingScript : MonoBehaviour {
             //  Update previous frame velocity value for next frame
             m_PreviousFrameVelocity = m_BallRigidBody.velocity;
         }
-        //  The ball has been in the air over the time limit; reset to previous position
+        /*  The ball has been in the air over the time limit
+         *  Start out of bounds animation if not yet triggered this putt
+         *  Check ensures the animation is not started multiple times
+         */
         else if (m_TimeInAir > m_AirTimeToResetBall)
         {
             if(!m_HasOOBAnimStarted)
@@ -95,11 +129,13 @@ public class BallMovingScript : MonoBehaviour {
         }
 
 
+        //  Increment out of bounds reset timer if the animation has started
         if(m_HasOOBAnimStarted)
         {
             m_OOBResetTimer += Time.deltaTime;
 
-            if (m_OOBResetTimer >= m_OOBResetTime)
+            //  Stop and reset the ball when the animation has finished playing
+            if (m_OOBResetTimer >= m_OOBAnimationDuration)
             {
                 StopBall();
                 ResetBallToPreviousPos();
@@ -115,18 +151,11 @@ public class BallMovingScript : MonoBehaviour {
 		{
 			StopBall ();
 
-            //  Search through the current collider stack and see if the ball is touching part of the valid current hole of the course
-            bool isTouchingGround = m_CurrentCollidersStack.IsTagInStack(M_GROUNDTAG);
-
-
-            //  If the ball is in the hole
-            if (m_IsInHole)
-            {
-                m_GrassParticles.gameObject.SetActive(false);
-                Debug.Log("Ball has entered the hole");
-            }
-            //  If the ball is not touching the ground
-            else if (!m_CurrentCollidersStack.IsTagInStack(M_GROUNDTAG))
+            /*  Start out of bounds animation if either:
+             *  (1) The ball is not on the ground(fairway) and also not in the whole OR
+             *  (2) The ball came to a stop within the ground of the wrong hole#
+             */
+            if ((!m_CurrentCollidersStack.IsTagInStack(M_GROUNDTAG) && !m_IsInHole) || !IsBallWithinProperHoleNumber())
             {
                 //  Check if out of bounds animation has been triggered yet this putt and play if it has not been
                 if (!m_HasOOBAnimStarted)
@@ -135,96 +164,100 @@ public class BallMovingScript : MonoBehaviour {
                     m_HasOOBAnimStarted = true;
                 }
             }
-            //  If the ball is touching a valid part of the current hole, we can go ahead and start the next putt
+            //  If the ball is in the hole on the valid hole#
+            else if (m_IsInHole && IsBallWithinProperHoleNumber())
+            {
+                //TODO
+                //UPDATES FOR THE BALL ENDING MOVEMENT IN THE PROPER HOLE
+                m_PlayerManagerScript.SetCurrentHole(m_PlayerManagerScript.GetCurrentHoleAsInt() + 1);
+                m_PlayerManagerScript.SetIsInHole(m_IsInHole);
+                TransferControlToPutting();
+            }
+            //  Start the next putt sequence directly otherwise
             else
-			    TransferControl ();
+                TransferControlToPutting();
 		}
 	}
 
 
-	private void OnEnable()
-	{
-        m_OOBResetTimer = 0f;
-        m_TimeInAir = 0;
-        m_BallPreviousPos = gameObject.transform.position;
-        m_HasOOBAnimStarted = false;
-
-        m_GrassParticles.gameObject.SetActive (true);
-		m_GrassParticles.Play ();
-	}
+    private float DetermineAudioVolume()
+    {
+        //	Update any volume that is based on ball velocity per frame
+        return (1f - (Mathf.Exp(m_SoundSmoothing * m_PreviousFrameVelocity.magnitude)));
+    }
 
 
     private void OnTriggerEnter(Collider _col)
     {
         //  Check if ball has entered hole and set if true
         if (_col.CompareTag(M_HOLETAG))
-        {
             m_IsInHole = true;
-        }
     }
 
 
     private void OnTriggerExit(Collider _col)
     {
-        //  Check if ball has left hole and set if true
+        //  Check if ball has left hole and set accordingly
         if(_col.CompareTag(M_HOLETAG))
-        {
             m_IsInHole = false;
-        }
     }
 
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnCollisionEnter(Collision _collision)
 	{
 		//	Play audio for wall bounce if ball hits a wall or the inside of the hole
-		if (collision.gameObject.CompareTag (M_WALLTAG) ||
-            (collision.gameObject.CompareTag(M_HOLETAG) && m_IsInHole))
-		{
+		if (_collision.gameObject.CompareTag (M_WALLTAG) || (_collision.gameObject.CompareTag(M_HOLETAG) && m_IsInHole))
 			PlayWallHitAudio ();
-		}
-        /* Checks to see if ball is bouncing off the grass/ground:
-		 * 1) Continue if the object collided with is the ground AND
-		 * 2) if the dot product of the ball's velocity and the the down vector (0, -1, 0) is greater than 0 meaning that the ball's velocity has some level of downward component
+        /* Check to see if ball is bouncing off the grass/ground by verifying that both:
+		 * (1) The object collided with is the ground AND
+		 * (2) The dot product of the ball's velocity and the the down vector (0, -1, 0) is greater than 0 meaning that the ball's velocity has some downward component
 		 */
-        else if (collision.gameObject.CompareTag(M_GROUNDTAG) && 
-            Vector3.Dot((collision.transform.up * -1), m_PreviousFrameVelocity) > 0f)
+        else if (_collision.gameObject.CompareTag(M_GROUNDTAG) && 
+            Vector3.Dot((_collision.transform.up * -1), m_PreviousFrameVelocity) > 0f)
         {
-            //  Only play if the ball has been in the air over the value of the cutoff; restricts audio from playing when going over bumps between tiles
-            if (m_TimeInAir > M_AIRTIMECUTOFFVALUE)
+            //  Only play if the ball has been in the air over the value of the cutoff; restricts audio from playing when moving between tiles
+            if (m_TimeInAir > m_MinAirTimeToPlayGroundCollisionAudio)
                 PlayGrassHitAudio();
         }
 
-        m_IsInAir = false;
-
-        //  Add the collider to the list of current colliders the ball is touching
-        m_CurrentCollidersStack.AddAt(collision.collider, m_CurrentCollidersStack.GetNumObjects());
+        //  Add the collider to the stack of current colliders the ball is touching
+        m_CurrentCollidersStack.Push(_collision.collider);
 	}
 
 
-	private void OnCollisionStay(Collision collision)
-	{
-        m_IsInAir = false;
-	}
-
-
-    private void OnCollisionExit(Collision collision)
+    private void OnCollisionExit(Collision _collision)
     {
         //  Remove the collider from the list of current colliders the ball is touching
         for(int i = 0; i < m_CurrentCollidersStack.GetNumObjects(); ++i)
         {
-            if(m_CurrentCollidersStack.GetObjectAt(i) == collision.collider)
+            if(m_CurrentCollidersStack.GetObjectAt(i) == _collision.collider)
             {
                 m_CurrentCollidersStack.RemoveAt(i);
                 break;
             }
         }
+    }
 
-        //  Check if there are no current colliders (the ball is in the air) and if true, start the air timer
-        if(m_CurrentCollidersStack.IsEmpty())
+
+    //  Check if the ball is in the proper hole# area
+    //  For example, if the player is currently on hole 4, but somehow the ball ends up on the grass of hole 5, use this to verify and reset the ball accordingly
+    private bool IsBallWithinProperHoleNumber()
+    {
+        //  Cycle through all the colliders currently touching the ball
+        for (int i = 0; i < m_CurrentCollidersStack.GetNumObjects(); ++i)
         {
-            m_IsInAir = true;
-            m_TimeInAir = 0f;
+            //  Go up a level until you reach a parent whose name starts with 'CourseHole' signifying you have found the parent GameObject for that hole#
+            GameObject temp = m_CurrentCollidersStack.GetObjectAt(i).gameObject;
+            while(!temp.name.StartsWith(M_COURSEHOLEPREFIX))
+                temp = temp.transform.parent.gameObject;
+
+
+            //  Check if the hole the ball is within matches the current hole of the player
+            if (temp.name == m_PlayerManagerScript.GetCurrentHoleAsString())
+                return true;
         }
+
+        return false;
     }
 
 
@@ -232,7 +265,7 @@ public class BallMovingScript : MonoBehaviour {
     private void PlayWallHitAudio()
 	{
 		m_MainAudioSource.clip = m_WallBounceClip;
-		m_MainAudioSource.volume = m_AudioVolume;
+		m_MainAudioSource.volume = DetermineAudioVolume();
 		m_MainAudioSource.Play ();
 	}
 
@@ -241,7 +274,7 @@ public class BallMovingScript : MonoBehaviour {
 	private void PlayGrassHitAudio()
 	{
 		m_MainAudioSource.clip = m_GrassBounceClip;
-		m_MainAudioSource.volume = m_AudioVolume;
+		m_MainAudioSource.volume = DetermineAudioVolume();
 		m_MainAudioSource.Play ();
 	}
 
@@ -250,7 +283,7 @@ public class BallMovingScript : MonoBehaviour {
     {
         m_PreviousFrameVelocity = Vector3.zero;
         gameObject.transform.position = m_BallPreviousPos;
-        TransferControl();
+        TransferControlToPutting();
     }
 
 
@@ -263,27 +296,34 @@ public class BallMovingScript : MonoBehaviour {
 	}
 
 
-	//	Update position, rotation, and emission rate over time for kicked up grass particles by the ball moving
+	//	Update grass particle effect
 	private void UpdateGrassParticles()
 	{
-        //  Only update and play if ball is rolling on the grass
+        //  Only update and play grass particle effect if ball is on the grass
         if (m_CurrentCollidersStack.IsTagInStack(M_GROUNDTAG))
         {
+            m_GrassParticles.gameObject.SetActive(true);
             m_GrassParticles.transform.position = m_BallRigidBody.transform.position + m_GrassParticlesOffset;
+            m_GrassParticles.Play();
 
+            //  Only update rotation when moving as passing zero vector into LookRotation will cause an error
             if (m_BallRigidBody.velocity != Vector3.zero)
                 m_GrassParticles.transform.rotation = Quaternion.LookRotation(m_BallRigidBody.velocity, Vector3.up)
                                                     * m_OriginalParticleRotation;
 
-            //	Emission rate over time set to sqr rt formula with (m_stoppingSpeed, 0) as initial point
+
+            //	Emission rate over time set to sqr rt formula (using ^.5 instead of sqrt) with (m_stoppingSpeed, 0) as initial point
             var tempEmission = m_GrassParticles.emission;
             tempEmission.rateOverTime = (Mathf.Pow((m_BallRigidBody.velocity.magnitude - m_StoppingSpeed),
-                0.5f)) * M_GRASSEMISSION;
+                0.5f)) * m_GrassParticleEmissionRate;
         }
+        //  Turn off particles if not on the grass
+        else
+            m_GrassParticles.gameObject.SetActive(false);
 	}
 
 
-	public void TransferControl()
+	public void TransferControlToPutting()
 	{
 		m_PuttingScript.enabled = true;
 		m_GrassParticles.gameObject.SetActive (false);

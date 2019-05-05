@@ -19,7 +19,7 @@ public class Stack<T>
     public T[] m_Data;
 
 
-    //  Return number of current objects (not array length)
+    //  Return number of current objects in the structure (not array length)
     public int GetNumObjects()
     {
         return m_NumObjects;

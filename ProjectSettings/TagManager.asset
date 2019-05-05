@@ -9,6 +9,7 @@ TagManager:
   - Ball
   - CameraManager
   - Hole
+  - GameManager
   layers:
   - Default
   - TransparentFX

@@ -1,0 +1,1 @@
+Scripts can be found in Assets/Scripts/ within the project or simply use https://github.com/AbedBraff/3DMiniGolf/tree/master/Assets/Scripts
