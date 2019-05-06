@@ -20,8 +20,13 @@ public class CameraControl : MonoBehaviour {
     public float m_MaxDistance = 2.5f;
     public float m_ZoomSpeed = 100.0f;
     public float m_KeyboardSpeedMultiplier = 1.5f;  //  Use for keyboard horizontal movement only
+    public float camAngleX { set { m_CamAngleX = value; } }
+    public float camAngleY { set { m_CamAngleY = value; } }
+    public Transform target { set { m_Target = value; } }
+    public Vector3 defaultAngles { get { return m_DefaultAngles; } }
 
 
+    private Vector3 m_DefaultAngles;
     private Transform m_Target;
     private Quaternion m_Rotation;
     private PuttingScript m_PuttingScript;
@@ -29,23 +34,12 @@ public class CameraControl : MonoBehaviour {
 	private float m_CamAngleY = 0.0f;
 
 
-	private const string M_PLAYERTAG = "Player";
-    private const string M_GAMEMANAGERTAG = "GameManager";
-
-
-    //  Setters and getters
-    public void SetTarget(Transform _value)
-    {
-        m_Target = _value;
-    }
-
-
     public void Setup () 
 	{
         //	Save starting rotation for x and y (z will always be 0; no fancy movie camera rotations here)
-        Vector3 angles = transform.eulerAngles;
-		m_CamAngleX = angles.y;
-		m_CamAngleY = angles.x;
+        m_DefaultAngles = transform.eulerAngles;
+		m_CamAngleX = m_DefaultAngles.y;
+		m_CamAngleY = m_DefaultAngles.x;
 
 
         //  Find and cache needed scripts and components
@@ -63,7 +57,7 @@ public class CameraControl : MonoBehaviour {
 	private void LateUpdate () 
 	{
 		//	Only allow camera control when the ball is moving, or the player isn't currently using the putt meter
-		if (!m_PuttingScript.isActiveAndEnabled || m_PuttingScript.GetCurrentPuttForce() == 0.0f)
+		if (!m_PuttingScript.isActiveAndEnabled || m_PuttingScript.currentPuttForce == 0.0f)
 			SetRotation ();
 		
 		SetPosition ();

@@ -5,8 +5,6 @@
 
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,15 +12,16 @@ using UnityEngine.UI;
 public class PuttingScript : MonoBehaviour
 {
     public AudioClip m_PuttClip;
+    public Color m_MinPuttForceColor = Color.yellow;
+    public Color m_MidPuttForceColor = Color.green;
+    public Color m_MaxPuttForceColor = Color.red;
     public float m_MaxPuttChargeTime = 2f;
 	public float m_MaxPuttForce = 0.5f;
+    public float currentPuttForce { get { return m_CurrentPuttForce; } }
 
 
     private AudioSource m_PuttAudioSource;
 	private Rigidbody m_BallRigidBody;
-    private Color m_MinPuttForceColor = Color.yellow;
-    private Color m_MidPuttForceColor = Color.green;
-    private Color m_MaxPuttForceColor = Color.red;
     private Vector3 m_PuttVector;
     private BallMovingScript m_BallMovingScript;
     private PlayerManager m_PlayerManagerScript;
@@ -39,13 +38,6 @@ public class PuttingScript : MonoBehaviour
     private const string M_PUTTSLIDERNAME = "PuttForceSlider";
 
 
-    //  Setters and getters
-    public float GetCurrentPuttForce()
-    {
-        return m_CurrentPuttForce;
-    }
-
-
     public void Setup()
 	{
         //  Find and cache needed scripts and components
@@ -55,7 +47,7 @@ public class PuttingScript : MonoBehaviour
             m_BallRigidBody = GetComponent<Rigidbody>();
             m_BallMovingScript = GetComponent<BallMovingScript>();
             m_PlayerManagerScript = this.transform.parent.gameObject.GetComponent<PlayerManager>();
-            m_PuttForceSlider = GameObject.Find(M_PUTTSLIDERNAME).GetComponent<Slider>();
+            m_PuttForceSlider = UIManager.m_UIManager.m_Slider;
             m_FillImage = m_PuttForceSlider.image;
 
         }
@@ -176,7 +168,12 @@ public class PuttingScript : MonoBehaviour
 	{
 		PlayPuttAudio ();
 		m_BallRigidBody.AddForce (m_PuttVector, ForceMode.Impulse);
-        m_PlayerManagerScript.SetCurrentHoleShots(m_PlayerManagerScript.GetCurrentHoleShots() + 1);
+        m_PlayerManagerScript.currentHoleShots++;
+        m_PlayerManagerScript.totalCourseShots++;
+
+        //testing
+        print("Current hole shots: " + m_PlayerManagerScript.currentHoleShots);
+        print("Total course shots: " + m_PlayerManagerScript.totalCourseShots);
 	}
 
 

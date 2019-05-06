@@ -30,4 +30,20 @@ public class ColliderStack : Stack<Collider>
 
         return false;
     }
+
+
+    public override string ToString()
+    {
+        string values = "";
+
+        for(int i = 0; i < this.GetNumObjects(); ++i)
+        {
+            values += this.GetObjectAt(i).tag;
+
+            if (i != this.GetNumObjects() - 1)
+                values += ", ";
+        }
+
+        return values;
+    }
 }

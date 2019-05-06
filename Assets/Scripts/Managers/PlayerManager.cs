@@ -8,64 +8,44 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerManager : MonoBehaviour {
+public class PlayerManager : MonoBehaviour
+{
+    public GameObject instance{ get { return m_Instance; } set { m_Instance = value; } }
+    public int playerNumber { set { m_PlayerNumber = value; } }
+    public int currentHole { get { return m_CurrentHole; } set { m_CurrentHole = value; } }
+    public bool isInHole{ get { return m_IsInHole; } set { m_IsInHole = value; } }
+    public int currentHoleShots{ get { return m_CurrentHoleShots; } set { m_CurrentHoleShots = value; } }
+    public int totalCourseShots{ get { return m_TotalCourseShots; } set { m_TotalCourseShots = value; } }
 
-     public GameObject m_Instance;
-    [HideInInspector] public GameObject m_CanvasGameObject;
-    [HideInInspector] public int m_PlayerNumber;
-    public GameManager m_GameManagerScript;
 
-
-    private int m_CurrentHole;
-    private bool m_IsInHole;
+    private GameObject m_Instance;
     private PuttingScript m_PuttingScript;
     private BallMovingScript m_BallMovingScript;
+    private int m_PlayerNumber;
+    private int m_CurrentHole;
+    private bool m_IsInHole;
     private int m_CurrentHoleShots;
-
-
-    private const string M_GAMEMANAGERTAG = "GameManager";
+    private int m_TotalCourseShots;
 
 
     //  Setters and getters
-    public void SetCurrentHole(int _value)
-    {
-        m_CurrentHole = _value;
-    }
     public string GetCurrentHoleAsString()
     {
         return "CourseHole" + (m_CurrentHole + 1);
-    }
-    public int GetCurrentHoleAsInt()
-    {
-        return m_CurrentHole;
-    }
-    public void SetIsInHole(bool _value)
-    {
-        m_IsInHole = _value;
-    }
-    public bool GetIsInHole()
-    {
-        return m_IsInHole;
-    }
-    public int GetCurrentHoleShots()
-    {
-        return m_CurrentHoleShots;
-    }
-    public void SetCurrentHoleShots(int _value)
-    {
-        m_CurrentHoleShots = _value;
-        print(m_CurrentHoleShots);
     }
 
 
     public void Setup()
     {
-        m_GameManagerScript = GameObject.FindGameObjectWithTag(M_GAMEMANAGERTAG).GetComponent<GameManager>();
+        m_CurrentHoleShots = 0;
+        m_TotalCourseShots = 0;
         m_CurrentHole = 0;
         m_PuttingScript = m_Instance.GetComponentInChildren<PuttingScript>(true);
         m_BallMovingScript = m_Instance.GetComponentInChildren<BallMovingScript>(true);
         m_PuttingScript.Setup();
         m_BallMovingScript.Setup();
+
+        GameManager.GameStatesClass.m_CurrentGameState = GameManager.GameStatesClass.GameStates.Setup;
     }
 
 
