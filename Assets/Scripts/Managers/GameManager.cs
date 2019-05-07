@@ -6,6 +6,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour {
 
@@ -98,6 +99,15 @@ public class GameManager : MonoBehaviour {
     private IEnumerator HoleStarting()
     {
         GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Starting;
+
+
+        //  Set the UI text for the current hole number
+        UIManager.m_UIManager.m_CurrentHoleText.text = "Hole\n" + (m_Players[m_CurrentPlayer].currentHole + 1) + " of " + m_CurrentCourse.m_CourseHoles.Length;
+        //  Set the UI text for the current hole par value
+        UIManager.m_UIManager.m_CurrentParText.text = "Par\n" + m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].currentHole].m_ParValue;
+        //  Reset the UI text for current shots back to 0
+        UIManager.m_UIManager.m_CurrentShotsText.text = "Shots:\t0";
+
 
         //  Get the rigidbody component of the current player (currently only a 1 player game so currentplayer is always 0)
         Rigidbody rb = m_Players[m_CurrentPlayer].GetComponentInChildren<Rigidbody>();

@@ -16,7 +16,7 @@ public class Stack<T>
     }
 
     private int m_NumObjects;
-    public T[] m_Data;
+    protected T[] m_Data;
 
 
     //  Return number of current objects in the structure (not array length)

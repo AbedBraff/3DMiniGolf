@@ -171,9 +171,8 @@ public class PuttingScript : MonoBehaviour
         m_PlayerManagerScript.currentHoleShots++;
         m_PlayerManagerScript.totalCourseShots++;
 
-        //testing
-        print("Current hole shots: " + m_PlayerManagerScript.currentHoleShots);
-        print("Total course shots: " + m_PlayerManagerScript.totalCourseShots);
+        //  Update UI text for shots this hole
+        UIManager.m_UIManager.m_CurrentShotsText.text = "Shots:\t" + m_PlayerManagerScript.currentHoleShots;
 	}
 
 
