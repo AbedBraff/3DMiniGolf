@@ -19,10 +19,8 @@ public class BallMovingScript : MonoBehaviour
     public float m_StoppingSpeed = .05f;
     public float m_PitchRange;
     public float m_AirTimeToResetBall;
-    public float m_OOBAnimationDuration;
-    public float m_SoundSmoothing = -0.5f;
+    [Range(-1f, -float.Epsilon)]public float m_SoundSmoothing = -0.5f;
     public float m_GrassParticleEmissionRate = 50f;
-    public float m_MinAirTimeToPlayGroundCollisionAudio = .15f;
 
 
     private Animator m_OOBTextAnimator;
@@ -39,6 +37,8 @@ public class BallMovingScript : MonoBehaviour
     private float m_OOBResetTimer;
     private bool m_HasOOBAnimStarted;
     private bool m_IsInHole;
+    private float m_OutOfBoundsAnimationLength = 4f;
+    private float m_MinAirTimeToPlayGroundCollisionAudio = .15f;
 
 
     private const string M_WALLTAG = "Wall";
@@ -79,11 +79,12 @@ public class BallMovingScript : MonoBehaviour
     }
 
 
-    //  Called each time the ball is putt again - resets all needed variables to starting values
+    //  Called each time the ball is putt again - resets all needed variables to starting values and sets gamestate
     private void OnEnable()
     {
         m_BallPreviousPos = gameObject.transform.position;  //  Only called with OnEnable as during setup it has no previous position
         ResetVariables();
+        GameManager.GameStatesClass.m_CurrentGameState = GameManager.GameStatesClass.GameStates.BallMoving;
     }
 
 
@@ -95,7 +96,7 @@ public class BallMovingScript : MonoBehaviour
         m_HasOOBAnimStarted = false;
         m_OOBResetTimer = 0.0f;
         m_IsInHole = false;
-        m_PlayerManagerScript.isInHole = false;
+        m_PlayerManagerScript.IsInHole = false;
     }
 
 
@@ -134,7 +135,7 @@ public class BallMovingScript : MonoBehaviour
             m_OOBResetTimer += Time.deltaTime;
 
             //  Stop and reset the ball when the animation has finished playing
-            if (m_OOBResetTimer >= m_OOBAnimationDuration)
+            if (m_OOBResetTimer >= m_OutOfBoundsAnimationLength)
             {
                 StopBall();
                 ResetBallToPreviousPos();
@@ -168,8 +169,8 @@ public class BallMovingScript : MonoBehaviour
             {
                 //TODO
                 //UPDATES FOR THE BALL ENDING MOVEMENT IN THE PROPER HOLE
-                m_PlayerManagerScript.currentHole = (m_PlayerManagerScript.currentHole++);
-                m_PlayerManagerScript.isInHole = m_IsInHole;
+                m_PlayerManagerScript.CurrentHole = (m_PlayerManagerScript.CurrentHole++);
+                m_PlayerManagerScript.IsInHole = m_IsInHole;
                 TransferControlToPutting();
             }
             //  Start the next putt sequence directly otherwise
@@ -256,7 +257,7 @@ public class BallMovingScript : MonoBehaviour
 
 
             //  Check if the hole the ball is within matches the current hole of the player
-            if (temp.name == m_PlayerManagerScript.GetCurrentHoleAsString())
+            if (temp.name == m_PlayerManagerScript.CurrentHoleAsString)
                 return true;
         }
 

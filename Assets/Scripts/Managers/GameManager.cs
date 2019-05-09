@@ -17,8 +17,9 @@ public class GameManager : MonoBehaviour {
     public GameObject m_PlayerPrefab;
     public CameraControl m_CameraControl;
     public GolfCourse m_CurrentCourse;
-    public float m_HoleStartDelay = 3f;
-    public float m_HoleEndDelay = 1f;
+    public float m_HoleStartDelay;
+    public float m_HoleEndDelay;
+    public float m_HoleResultDelay;
 
 
     private int m_NumPlayers;
@@ -27,10 +28,13 @@ public class GameManager : MonoBehaviour {
     private GameObject[] m_PlayerObjects;
 
 
+    public PlayerManager CurrentPlayer { get { return m_Players[m_CurrentPlayer]; } }
+
+
     //  Public enum class with static public vars for game state changes
     public class GameStatesClass : MonoBehaviour
     {
-        public enum GameStates { Menu, Paused, Starting, Playing, Ending, Setup };
+        public enum GameStates { Menu, Paused, Starting, Playing, Ending, Putting, BallMoving, HoleOverview, Setup };
         public static GameStates m_CurrentGameState;
     }
 
@@ -102,9 +106,9 @@ public class GameManager : MonoBehaviour {
 
 
         //  Set the UI text for the current hole number
-        UIManager.m_UIManager.m_CurrentHoleText.text = "Hole\n" + (m_Players[m_CurrentPlayer].currentHole + 1) + " of " + m_CurrentCourse.m_CourseHoles.Length;
+        UIManager.m_UIManager.m_CurrentHoleText.text = "Hole\n" + (m_Players[m_CurrentPlayer].CurrentHole + 1) + " of " + m_CurrentCourse.m_CourseHoles.Length;
         //  Set the UI text for the current hole par value
-        UIManager.m_UIManager.m_CurrentParText.text = "Par\n" + m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].currentHole].m_ParValue;
+        UIManager.m_UIManager.m_CurrentParText.text = "Par\n" + m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_ParValue;
         //  Reset the UI text for current shots back to 0
         UIManager.m_UIManager.m_CurrentShotsText.text = "Shots:\t0";
 
@@ -118,13 +122,13 @@ public class GameManager : MonoBehaviour {
         rb.freezeRotation = false;
 
         //  Move the ball to the starting position and rotation of the next hole
-        rb.MovePosition(m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].currentHole].m_StartingLoc.position);
+        rb.MovePosition(m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_StartingLoc.position);
 
-        Vector3 rotation = m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].currentHole].m_StartingLoc.eulerAngles;
+        Vector3 rotation = m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_StartingLoc.eulerAngles;
         rb.MoveRotation(Quaternion.Euler(rotation));
-        rotation += m_CameraControl.defaultAngles;
-        m_CameraControl.camAngleX = rotation.y;
-        m_CameraControl.camAngleY = rotation.x;
+        rotation += m_CameraControl.DefaultAngles;
+        m_CameraControl.CamAngleX = rotation.y;
+        m_CameraControl.CamAngleY = rotation.x;
 
 
         //  Delay
@@ -135,10 +139,10 @@ public class GameManager : MonoBehaviour {
     private IEnumerator HolePlaying()
     {
         GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Playing;
-        m_Players[0].EnablePutting();
+        m_Players[m_CurrentPlayer].EnablePutting();
 
         //  PLACEHOLDER
-        while(!m_Players[m_CurrentPlayer].isInHole)
+        while(!m_Players[m_CurrentPlayer].IsInHole)
         {
             yield return null;
         }
@@ -150,18 +154,69 @@ public class GameManager : MonoBehaviour {
         GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Ending;
         Debug.Log("Hole Over");
 
-        m_Players[m_CurrentPlayer].currentHole++;
-        m_Players[m_CurrentPlayer].isInHole = false;
-        m_Players[m_CurrentPlayer].currentHoleShots = 0;
 
-        //  Delay
+        //  Set text for hole result text
+        UIManager.m_UIManager.m_HoleResultText.text = GetHoleResultText();
+
+        //  Hole result delay so that the player can see their result
+        yield return new WaitForSeconds(m_HoleResultDelay);
+
+        //  Reset hole result text
+        UIManager.m_UIManager.m_HoleResultText.text = "";
+
+
+        m_Players[m_CurrentPlayer].CurrentHole++;
+        m_Players[m_CurrentPlayer].IsInHole = false;
+        m_Players[m_CurrentPlayer].CurrentHoleShots = 0;
+        //  PUTTING MUST BE DISABLED HERE
+        //  Because BallMoving naturally progresses into Putting once the ball has stopped, we must disable it between holes to make sure values & game states are properly reset
+        m_Players[m_CurrentPlayer].DisablePutting();
+
+
+        //  Delay between end of one hole and start of the next
         yield return new WaitForSeconds(m_HoleEndDelay);
+    }
+
+
+    //  Return the result of a hole; ie birdie, hole in one, bogey, etc
+    private string GetHoleResultText()
+    {
+        string result = "";
+
+        //  Check if player got a hole in one
+        if (m_Players[m_CurrentPlayer].CurrentHoleShots == 1)
+            return "Hole in one!";
+
+
+        //  Determine result by subtracting the player's shots for that hole from the par value
+        int relativeScore = (m_Players[m_CurrentPlayer].CurrentHoleShots) -
+            (m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_ParValue);
+
+        if (relativeScore <= -3)
+            result = "Albatross";
+        else if (relativeScore == -2)
+            result = "Eagle";
+        else if (relativeScore == -1)
+            result = "Birdie";
+        else if (relativeScore == 0)
+            result = "Par";
+        else if (relativeScore == 1)
+            result = "Bogey";
+        else if (relativeScore == 2)
+            result = "Double Bogey";
+        else if (relativeScore == 3)
+            result = "Triple Bogey";
+        else
+            result = "+" + relativeScore;
+ 
+
+        return result;
     }
 
 
     private bool IsCourseComplete()
     {
-        if (m_Players[m_CurrentPlayer].currentHole == m_CurrentCourse.m_CourseHoles.Length)
+        if (m_Players[m_CurrentPlayer].CurrentHole == m_CurrentCourse.m_CourseHoles.Length)
         {
             return true;
         }
@@ -176,15 +231,15 @@ public class GameManager : MonoBehaviour {
         {
             m_PlayerObjects[i] = Instantiate(m_PlayerPrefab) as GameObject;
             m_Players[i] = m_PlayerObjects[i].GetComponent<PlayerManager>();
-            m_Players[i].instance = m_PlayerObjects[i];
-            m_Players[i].playerNumber = i + 1;
+            m_Players[i].Instance = m_PlayerObjects[i];
+            m_Players[i].PlayerNumber = i + 1;
             m_Players[i].Setup();
         }
     }
 
     private void SetCamera()
     {
-        m_CameraControl.target = m_Players[0].instance.GetComponentInChildren<Rigidbody>().transform;
+        m_CameraControl.Target = m_Players[0].Instance.GetComponentInChildren<Rigidbody>().transform;
         m_CameraControl.enabled = true;
         m_CameraControl.Setup();
     }

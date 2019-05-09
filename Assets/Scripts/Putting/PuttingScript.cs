@@ -17,7 +17,10 @@ public class PuttingScript : MonoBehaviour
     public Color m_MaxPuttForceColor = Color.red;
     public float m_MaxPuttChargeTime = 2f;
 	public float m_MaxPuttForce = 0.5f;
-    public float currentPuttForce { get { return m_CurrentPuttForce; } }
+
+    //  Setters & getters
+    public float CurrentPuttForce { get { return m_CurrentPuttForce; } }
+    public bool StartedPutting { get { return m_StartedPutting; } }
 
 
     private AudioSource m_PuttAudioSource;
@@ -65,10 +68,11 @@ public class PuttingScript : MonoBehaviour
 	}
 
 
-    //  Called each time the user is ready to putt again - resets all needed variables to starting values
+    //  Called each time the user is ready to putt again - resets all needed variables to starting values and set gamestate
 	private void OnEnable()
 	{
         ResetVariables();
+        GameManager.GameStatesClass.m_CurrentGameState = GameManager.GameStatesClass.GameStates.Putting;
 	}
 
 
@@ -86,15 +90,23 @@ public class PuttingScript : MonoBehaviour
 	void Update()
 	{
 		/*	
-		 * Only check if we ShouldPutt if the ball hasn't been set to putt next
-		 *	FixedUpdate.  Otherwise we will lose inputs.
+		 * Only check if we ShouldPutt if the ball hasn't been set to putt next FixedUpdate AND we are in the putting gamestate
+         *	Otherwise we will lose inputs.
 		 *	If we will be putting, determine the putt vector for the next FixedUpdate
 		*/
-		if (!m_WillPutt)
+		if (!m_WillPutt && GameManager.GameStatesClass.m_CurrentGameState == GameManager.GameStatesClass.GameStates.Putting)
 		{
 			if (m_WillPutt = ShouldPutt ())
 				DeterminePuttVector ();
 		}
+
+
+        //  If user presses camera overview button, hasn't started putting, and Putting is the current gamestate
+        /*if(Input.GetKeyDown(KeyCode.C) && !m_StartedPutting && GameManager.GameStatesClass.m_CurrentGameState == GameManager.GameStatesClass.GameStates.Putting)
+        {
+            GameManager.GameStatesClass.m_CurrentGameState = GameManager.GameStatesClass.GameStates.HoleOverview;
+            CameraManager.m_CameraManager.MoveCameraToOverviewLoc();
+        }*/
 	}
 
 
@@ -168,11 +180,11 @@ public class PuttingScript : MonoBehaviour
 	{
 		PlayPuttAudio ();
 		m_BallRigidBody.AddForce (m_PuttVector, ForceMode.Impulse);
-        m_PlayerManagerScript.currentHoleShots++;
-        m_PlayerManagerScript.totalCourseShots++;
+        m_PlayerManagerScript.CurrentHoleShots++;
+        m_PlayerManagerScript.TotalCourseShots++;
 
         //  Update UI text for shots this hole
-        UIManager.m_UIManager.m_CurrentShotsText.text = "Shots:\t" + m_PlayerManagerScript.currentHoleShots;
+        UIManager.m_UIManager.m_CurrentShotsText.text = "Shots:\t" + m_PlayerManagerScript.CurrentHoleShots;
 	}
 
 

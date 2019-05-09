@@ -10,12 +10,15 @@ using UnityEngine;
 
 public class PlayerManager : MonoBehaviour
 {
-    public GameObject instance{ get { return m_Instance; } set { m_Instance = value; } }
-    public int playerNumber { set { m_PlayerNumber = value; } }
-    public int currentHole { get { return m_CurrentHole; } set { m_CurrentHole = value; } }
-    public bool isInHole{ get { return m_IsInHole; } set { m_IsInHole = value; } }
-    public int currentHoleShots{ get { return m_CurrentHoleShots; } set { m_CurrentHoleShots = value; } }
-    public int totalCourseShots{ get { return m_TotalCourseShots; } set { m_TotalCourseShots = value; } }
+    //  Setters & getters
+    public GameObject Instance{ get { return m_Instance; } set { m_Instance = value; } }
+    public int PlayerNumber { set { m_PlayerNumber = value; } }
+    public int CurrentHole { get { return m_CurrentHole; } set { m_CurrentHole = value; } }
+    public string CurrentHoleAsString { get { return "CourseHole" + (m_CurrentHole + 1); } }
+    public bool IsInHole{ get { return m_IsInHole; } set { m_IsInHole = value; } }
+    public int CurrentHoleShots{ get { return m_CurrentHoleShots; } set { m_CurrentHoleShots = value; } }
+    public int TotalCourseShots{ get { return m_TotalCourseShots; } set { m_TotalCourseShots = value; } }
+    public PuttingScript PuttingScript { get { return m_PuttingScript; } }
 
 
     private GameObject m_Instance;
@@ -26,13 +29,6 @@ public class PlayerManager : MonoBehaviour
     private bool m_IsInHole;
     private int m_CurrentHoleShots;
     private int m_TotalCourseShots;
-
-
-    //  Setters and getters
-    public string GetCurrentHoleAsString()
-    {
-        return "CourseHole" + (m_CurrentHole + 1);
-    }
 
 
     public void Setup()

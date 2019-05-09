@@ -114,6 +114,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_PuttClip: {fileID: 8300000, guid: 9a7f8377e9d5fa64e8cfd3ab8b509aaf, type: 3}
+  m_MinPuttForceColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  m_MidPuttForceColor: {r: 0, g: 1, b: 0, a: 1}
+  m_MaxPuttForceColor: {r: 1, g: 0, b: 0, a: 1}
   m_MaxPuttChargeTime: 2
   m_MaxPuttForce: 0.5
 --- !u!54 &6520504139360684334
@@ -150,10 +153,8 @@ MonoBehaviour:
   m_StoppingSpeed: 0.05
   m_PitchRange: 0.2
   m_AirTimeToResetBall: 2.5
-  m_OOBAnimationDuration: 4
   m_SoundSmoothing: -0.5
   m_GrassParticleEmissionRate: 50
-  m_MinAirTimeToPlayGroundCollisionAudio: 0.15
 --- !u!82 &6520504139360684332
 AudioSource:
   m_ObjectHideFlags: 0
@@ -295,7 +296,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d2a20f0884a94242ba8bd3e75298038, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Instance: {fileID: 0}
-  m_CanvasGameObject: {fileID: 0}
-  m_PlayerNumber: 0
-  m_GameManagerScript: {fileID: 0}

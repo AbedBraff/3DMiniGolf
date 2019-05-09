@@ -10,9 +10,8 @@ using System;
 
 
 public class CameraControl : MonoBehaviour {
-
 	public float m_Distance = 0.75f;
-	public float m_XSpeed = 120.0f;
+    public float m_XSpeed = 120.0f;
     public float m_YSpeed = 90.0f;
     public float m_YMinAngle = 5.0f;
     public float m_YMaxAngle = 85.0f;
@@ -20,10 +19,13 @@ public class CameraControl : MonoBehaviour {
     public float m_MaxDistance = 2.5f;
     public float m_ZoomSpeed = 100.0f;
     public float m_KeyboardSpeedMultiplier = 1.5f;  //  Use for keyboard horizontal movement only
-    public float camAngleX { set { m_CamAngleX = value; } }
-    public float camAngleY { set { m_CamAngleY = value; } }
-    public Transform target { set { m_Target = value; } }
-    public Vector3 defaultAngles { get { return m_DefaultAngles; } }
+    public float m_TranslateSpeed;
+
+    //  Setters & getters
+    public float CamAngleX { set { m_CamAngleX = value; } }
+    public float CamAngleY { set { m_CamAngleY = value; } }
+    public Transform Target { set { m_Target = value; } }
+    public Vector3 DefaultAngles { get { return m_DefaultAngles; } }
 
 
     private Vector3 m_DefaultAngles;
@@ -57,7 +59,7 @@ public class CameraControl : MonoBehaviour {
 	private void LateUpdate () 
 	{
 		//	Only allow camera control when the ball is moving, or the player isn't currently using the putt meter
-		if (!m_PuttingScript.isActiveAndEnabled || m_PuttingScript.currentPuttForce == 0.0f)
+		if (!m_PuttingScript.isActiveAndEnabled || m_PuttingScript.CurrentPuttForce == 0.0f)
 			SetRotation ();
 		
 		SetPosition ();
