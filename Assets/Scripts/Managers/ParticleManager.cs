@@ -4,18 +4,20 @@ using UnityEngine;
 
 public class ParticleManager : MonoBehaviour
 {
-    public static ParticleManager m_ParticleManager;
+    public static ParticleManager particleManager;
+
+
     public ParticleSystem m_GrassParticles;
 
 
     private void Awake()
     {
-        if (m_ParticleManager == null)
+        if (particleManager == null)
         {
             DontDestroyOnLoad(gameObject);
-            m_ParticleManager = this;
+            particleManager = this;
         }
-        else if (m_ParticleManager != this)
+        else if (particleManager != this)
             Destroy(gameObject);
     }
 }

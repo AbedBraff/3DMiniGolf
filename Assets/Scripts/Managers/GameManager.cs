@@ -11,7 +11,8 @@ using UnityEngine.UI;
 public class GameManager : MonoBehaviour {
 
 
-    public static GameManager m_GameManager;
+    public static GameManager gameManager;
+    public static GameState.GameStates gameState;
 
 
     public GameObject m_PlayerPrefab;
@@ -24,30 +25,22 @@ public class GameManager : MonoBehaviour {
 
     private int m_NumPlayers;
     private int m_CurrentPlayer;
-    private PlayerManager[] m_Players;
+    private PlayerController[] m_Players;
     private GameObject[] m_PlayerObjects;
 
 
-    public PlayerManager CurrentPlayer { get { return m_Players[m_CurrentPlayer]; } }
-
-
-    //  Public enum class with static public vars for game state changes
-    public class GameStatesClass : MonoBehaviour
-    {
-        public enum GameStates { Menu, Paused, Starting, Playing, Ending, Putting, BallMoving, HoleOverview, Setup };
-        public static GameStates m_CurrentGameState;
-    }
+    public PlayerController CurrentPlayer { get { return m_Players[m_CurrentPlayer]; } }
 
 
     private void Awake()
     {
-        if(m_GameManager == null)
+        if(gameManager == null)
         {
             DontDestroyOnLoad(gameObject);
-            m_GameManager = this;
-            GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Menu;
+            gameManager = this;
+            gameState = GameState.GameStates.Menu;
         }
-        else if (m_GameManager != this)
+        else if (gameManager != this)
             Destroy(gameObject);
     }
 
@@ -55,7 +48,7 @@ public class GameManager : MonoBehaviour {
     private void Update()
     {
         //  Start game if we are in the "menu" (not yet implemented) and press enter
-        if(GameManager.GameStatesClass.m_CurrentGameState == GameStatesClass.GameStates.Menu && Input.GetKeyDown(KeyCode.Return))
+        if(gameState == GameState.GameStates.Menu && Input.GetKeyDown(KeyCode.Return))
         {
             Setup();
         }
@@ -66,10 +59,10 @@ public class GameManager : MonoBehaviour {
 	{
         //Cursor.lockState = CursorLockMode.Locked;
         //Cursor.visible = false;
-        GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Setup;
+        gameState = GameState.GameStates.Setup;
         m_NumPlayers = 1;
         m_CurrentPlayer = 0;
-        m_Players = new PlayerManager[m_NumPlayers];
+        m_Players = new PlayerController[m_NumPlayers];
         m_PlayerObjects = new GameObject[m_NumPlayers];
 
         SpawnPlayers();
@@ -87,7 +80,7 @@ public class GameManager : MonoBehaviour {
 
 
         //  Determine if we've reached the end of the course
-        if (IsCourseComplete())
+        if (IsGameComplete())
         {
             print("Course over");
         }
@@ -102,15 +95,14 @@ public class GameManager : MonoBehaviour {
 
     private IEnumerator HoleStarting()
     {
-        GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Starting;
-
+        gameState = GameState.GameStates.Starting;
 
         //  Set the UI text for the current hole number
-        UIManager.m_UIManager.m_CurrentHoleText.text = "Hole\n" + (m_Players[m_CurrentPlayer].CurrentHole + 1) + " of " + m_CurrentCourse.m_CourseHoles.Length;
+        UIManager.uiManager.m_CurrentHoleText.text = "Hole\n" + (m_Players[m_CurrentPlayer].CurrentHole + 1) + " of " + m_CurrentCourse.CourseLength;
         //  Set the UI text for the current hole par value
-        UIManager.m_UIManager.m_CurrentParText.text = "Par\n" + m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_ParValue;
+        UIManager.uiManager.m_CurrentParText.text = "Par\n" + m_CurrentCourse.m_CourseHoles[CurrentPlayer.CurrentHole].m_ParValue;
         //  Reset the UI text for current shots back to 0
-        UIManager.m_UIManager.m_CurrentShotsText.text = "Shots:\t0";
+        UIManager.uiManager.m_CurrentShotsText.text = "Shots:\t0";
 
 
         //  Get the rigidbody component of the current player (currently only a 1 player game so currentplayer is always 0)
@@ -122,9 +114,9 @@ public class GameManager : MonoBehaviour {
         rb.freezeRotation = false;
 
         //  Move the ball to the starting position and rotation of the next hole
-        rb.MovePosition(m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_StartingLoc.position);
+        rb.MovePosition(m_CurrentCourse.m_CourseHoles[CurrentPlayer.CurrentHole].m_StartingLoc.position);
 
-        Vector3 rotation = m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_StartingLoc.eulerAngles;
+        Vector3 rotation = m_CurrentCourse.m_CourseHoles[CurrentPlayer.CurrentHole].m_StartingLoc.eulerAngles;
         rb.MoveRotation(Quaternion.Euler(rotation));
         rotation += m_CameraControl.DefaultAngles;
         m_CameraControl.CamAngleX = rotation.y;
@@ -138,7 +130,7 @@ public class GameManager : MonoBehaviour {
 
     private IEnumerator HolePlaying()
     {
-        GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Playing;
+        gameState = GameState.GameStates.Playing;
         m_Players[m_CurrentPlayer].EnablePutting();
 
         //  PLACEHOLDER
@@ -151,18 +143,18 @@ public class GameManager : MonoBehaviour {
 
     private IEnumerator HoleEnding()
     {
-        GameManager.GameStatesClass.m_CurrentGameState = GameStatesClass.GameStates.Ending;
+        gameState = GameState.GameStates.Ending;
         Debug.Log("Hole Over");
 
 
         //  Set text for hole result text
-        UIManager.m_UIManager.m_HoleResultText.text = GetHoleResultText();
+        UIManager.uiManager.m_HoleResultText.text = GetHoleResultText();
 
         //  Hole result delay so that the player can see their result
         yield return new WaitForSeconds(m_HoleResultDelay);
 
         //  Reset hole result text
-        UIManager.m_UIManager.m_HoleResultText.text = "";
+        UIManager.uiManager.m_HoleResultText.text = "";
 
 
         m_Players[m_CurrentPlayer].CurrentHole++;
@@ -190,7 +182,7 @@ public class GameManager : MonoBehaviour {
 
         //  Determine result by subtracting the player's shots for that hole from the par value
         int relativeScore = (m_Players[m_CurrentPlayer].CurrentHoleShots) -
-            (m_CurrentCourse.m_CourseHoles[m_Players[m_CurrentPlayer].CurrentHole].m_ParValue);
+            (m_CurrentCourse.m_CourseHoles[CurrentPlayer.CurrentHole].m_ParValue);
 
         if (relativeScore <= -3)
             result = "Albatross";
@@ -214,14 +206,27 @@ public class GameManager : MonoBehaviour {
     }
 
 
-    private bool IsCourseComplete()
+    /*private bool IsCourseComplete()
     {
-        if (m_Players[m_CurrentPlayer].CurrentHole == m_CurrentCourse.m_CourseHoles.Length)
+        if (m_Players[m_CurrentPlayer].CurrentHole == m_CurrentCourse.CourseLength)
         {
             return true;
         }
 
         return false;
+    }*/
+
+    
+    //  Check if all players have finished the course
+    private bool IsGameComplete()
+    {
+        for(int i = 0; i < m_NumPlayers; ++i)
+        {
+            if (!m_Players[i].IsCourseFinished)
+                return false;
+        }
+
+        return true;
     }
 
 
@@ -230,7 +235,7 @@ public class GameManager : MonoBehaviour {
         for (int i = 0; i < m_NumPlayers; ++i)
         {
             m_PlayerObjects[i] = Instantiate(m_PlayerPrefab) as GameObject;
-            m_Players[i] = m_PlayerObjects[i].GetComponent<PlayerManager>();
+            m_Players[i] = m_PlayerObjects[i].GetComponent<PlayerController>();
             m_Players[i].Instance = m_PlayerObjects[i];
             m_Players[i].PlayerNumber = i + 1;
             m_Players[i].Setup();

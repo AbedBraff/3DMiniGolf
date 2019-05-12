@@ -154,14 +154,21 @@ public class Stack<T>
 
 
     //  Print data to the console
-    public void PrintData()
+    public override string ToString()
     {
+        string returnText = "";
+
         if (IsEmpty())
-            Debug.Log("Stack is empty.");
+            returnText = "Stack is empty.";
 
         for(int i = 0; i < m_NumObjects; ++i)
         {
-            Debug.Log(m_Data[i].ToString() + ", ");
+            returnText += GetObjectAt(i);
+
+            if (i < (m_NumObjects - 1))
+                returnText += ", ";
         }
+
+        return returnText;
     }
 }

@@ -26,7 +26,7 @@ public class BallMovingScript : MonoBehaviour
     private Animator m_OOBTextAnimator;
     private AudioSource m_MainAudioSource;
     private PuttingScript m_PuttingScript;
-    private PlayerManager m_PlayerManagerScript;
+    private PlayerController m_PlayerControllerScript;
     private Rigidbody m_BallRigidBody;
     private Quaternion m_OriginalParticleRotation;
     private Vector3 m_BallPreviousPos;
@@ -57,9 +57,9 @@ public class BallMovingScript : MonoBehaviour
             m_MainAudioSource = GetComponent<AudioSource>();
             m_PuttingScript = GetComponent<PuttingScript>();
             m_BallRigidBody = GetComponent<Rigidbody>();
-            m_PlayerManagerScript = this.transform.parent.gameObject.GetComponent<PlayerManager>();
-            m_GrassParticles = ParticleManager.m_ParticleManager.m_GrassParticles;
-            m_OOBTextAnimator = UIManager.m_UIManager.GetComponentInChildren<Animator>(true);
+            m_PlayerControllerScript = this.transform.parent.gameObject.GetComponent<PlayerController>();
+            m_GrassParticles = ParticleManager.particleManager.m_GrassParticles;
+            m_OOBTextAnimator = UIManager.uiManager.GetComponentInChildren<Animator>(true);
         }
         catch (Exception e)
         {
@@ -84,7 +84,7 @@ public class BallMovingScript : MonoBehaviour
     {
         m_BallPreviousPos = gameObject.transform.position;  //  Only called with OnEnable as during setup it has no previous position
         ResetVariables();
-        GameManager.GameStatesClass.m_CurrentGameState = GameManager.GameStatesClass.GameStates.BallMoving;
+        m_PlayerControllerScript.playerState = PlayerState.PlayerStates.BallMoving;
     }
 
 
@@ -96,7 +96,7 @@ public class BallMovingScript : MonoBehaviour
         m_HasOOBAnimStarted = false;
         m_OOBResetTimer = 0.0f;
         m_IsInHole = false;
-        m_PlayerManagerScript.IsInHole = false;
+        m_PlayerControllerScript.IsInHole = false;
     }
 
 
@@ -169,8 +169,8 @@ public class BallMovingScript : MonoBehaviour
             {
                 //TODO
                 //UPDATES FOR THE BALL ENDING MOVEMENT IN THE PROPER HOLE
-                m_PlayerManagerScript.CurrentHole = (m_PlayerManagerScript.CurrentHole++);
-                m_PlayerManagerScript.IsInHole = m_IsInHole;
+                m_PlayerControllerScript.CurrentHole = (m_PlayerControllerScript.CurrentHole++);
+                m_PlayerControllerScript.IsInHole = m_IsInHole;
                 TransferControlToPutting();
             }
             //  Start the next putt sequence directly otherwise
@@ -257,7 +257,7 @@ public class BallMovingScript : MonoBehaviour
 
 
             //  Check if the hole the ball is within matches the current hole of the player
-            if (temp.name == m_PlayerManagerScript.CurrentHoleAsString)
+            if (temp.name == m_PlayerControllerScript.CurrentHoleAsString)
                 return true;
         }
 

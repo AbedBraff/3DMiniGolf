@@ -11,6 +11,7 @@ using UnityEngine.UI;
 
 public class PuttingScript : MonoBehaviour
 {
+
     public AudioClip m_PuttClip;
     public Color m_MinPuttForceColor = Color.yellow;
     public Color m_MidPuttForceColor = Color.green;
@@ -27,7 +28,7 @@ public class PuttingScript : MonoBehaviour
 	private Rigidbody m_BallRigidBody;
     private Vector3 m_PuttVector;
     private BallMovingScript m_BallMovingScript;
-    private PlayerManager m_PlayerManagerScript;
+    private PlayerController m_PlayerControllerScript;
     private Slider m_PuttForceSlider;
     private Image m_FillImage;
     private float m_CurrentPuttForce;
@@ -49,8 +50,8 @@ public class PuttingScript : MonoBehaviour
             m_PuttAudioSource = GetComponent<AudioSource>();
             m_BallRigidBody = GetComponent<Rigidbody>();
             m_BallMovingScript = GetComponent<BallMovingScript>();
-            m_PlayerManagerScript = this.transform.parent.gameObject.GetComponent<PlayerManager>();
-            m_PuttForceSlider = UIManager.m_UIManager.m_Slider;
+            m_PlayerControllerScript = this.transform.parent.gameObject.GetComponent<PlayerController>();
+            m_PuttForceSlider = UIManager.uiManager.m_Slider;
             m_FillImage = m_PuttForceSlider.image;
 
         }
@@ -58,6 +59,7 @@ public class PuttingScript : MonoBehaviour
         {
             print("Error: " + e.ToString());
         }
+        
 
         //  Set vars to starting values
         ResetVariables();
@@ -72,7 +74,7 @@ public class PuttingScript : MonoBehaviour
 	private void OnEnable()
 	{
         ResetVariables();
-        GameManager.GameStatesClass.m_CurrentGameState = GameManager.GameStatesClass.GameStates.Putting;
+        m_PlayerControllerScript.playerState = PlayerState.PlayerStates.Putting;
 	}
 
 
@@ -94,7 +96,7 @@ public class PuttingScript : MonoBehaviour
          *	Otherwise we will lose inputs.
 		 *	If we will be putting, determine the putt vector for the next FixedUpdate
 		*/
-		if (!m_WillPutt && GameManager.GameStatesClass.m_CurrentGameState == GameManager.GameStatesClass.GameStates.Putting)
+		if (!m_WillPutt && m_PlayerControllerScript.playerState == PlayerState.PlayerStates.Putting)
 		{
 			if (m_WillPutt = ShouldPutt ())
 				DeterminePuttVector ();
@@ -180,11 +182,11 @@ public class PuttingScript : MonoBehaviour
 	{
 		PlayPuttAudio ();
 		m_BallRigidBody.AddForce (m_PuttVector, ForceMode.Impulse);
-        m_PlayerManagerScript.CurrentHoleShots++;
-        m_PlayerManagerScript.TotalCourseShots++;
+        m_PlayerControllerScript.CurrentHoleShots++;
+        m_PlayerControllerScript.TotalCourseShots++;
 
         //  Update UI text for shots this hole
-        UIManager.m_UIManager.m_CurrentShotsText.text = "Shots:\t" + m_PlayerManagerScript.CurrentHoleShots;
+        UIManager.uiManager.m_CurrentShotsText.text = "Shots:\t" + m_PlayerControllerScript.CurrentHoleShots;
 	}
 
 

@@ -5,7 +5,8 @@ using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
-    public static UIManager m_UIManager;
+    public static UIManager uiManager;
+
     public Slider m_Slider;
     public Text m_CurrentHoleText;
     public Text m_CurrentShotsText;
@@ -17,12 +18,12 @@ public class UIManager : MonoBehaviour
 
     private void Awake()
     {
-        if(m_UIManager == null)
+        if(uiManager == null)
         {
             DontDestroyOnLoad(gameObject);
-            m_UIManager = this;
+            uiManager = this;
         }
-        else if (m_UIManager != this)
+        else if (uiManager != this)
             Destroy(gameObject);
 
         SetTextColor();
